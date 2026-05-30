@@ -1,6 +1,7 @@
-# FastAPI
+# FastAPI / Server
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
+gunicorn>=21.2.0
 
 # Database
 sqlalchemy>=2.0.35
@@ -19,9 +20,7 @@ pydantic[email]>=2.9.0
 pydantic-settings>=2.5.0
 
 # File handling
-python-multipart>=0.0.12
 pillow>=11.0.0
-openpyxl>=3.1.0
 
 # Dev
 pytest>=8.3.0
