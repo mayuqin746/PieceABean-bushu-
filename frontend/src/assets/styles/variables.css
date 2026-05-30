@@ -1,0 +1,55 @@
+:root {
+  --bg-color: #eef3fd;
+  /* --bg-color: #e7f2fd; */
+  /* primary改变的是转换器的颜色 */
+  --primary: #A6DDF9;
+  --primary-lig: #c4eafc;
+  --primary-light: #D6E6F5;
+  --primary-light-light: #f1f7fd;
+  /* secondary 是改变盲盒盒子颜色的 */
+  --secondary: #A6DDF9;
+  /* text-main 是改变导航栏被选中的颜色和字体颜色 */
+  --text-main: #334155;
+  --text-light: #A0AEC0;
+  --card-bg: #FFFFFF;
+  --border-color: #E2E8F0;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --shadow-soft: 0 8px 25px rgba(123, 164, 219, 0.08);
+  --header-height: 100px;
+  --theme-text-dark: #0284C7;
+  --mood-bg: #F0F9FF;
+  --blindbox-bg: #E0F4FF;
+}
+
+[data-theme="pink"] {
+  --bg-color: #FFFAFB;
+  --primary: #FEADCF;
+  --primary-lig:#fed3d9;
+  --primary-light: #ffdbe0;
+  --primary-light-light: #fff4f6;
+  --secondary: #FEADCF;
+  --text-main: #5C4D50;
+  --text-light: #A89B9E;
+  --border-color: #F0E6E8;
+  --shadow-soft: 0 8px 25px rgba(255, 142, 158, 0.08);
+  --theme-text-dark: #DB2777;
+  --mood-bg: #FFF1F2;
+  --blindbox-bg: #FFF0F5;
+}
+
+[data-theme="purple"] {
+  --bg-color: #F9F5FF;
+  --primary: #D9B6FB;
+  --primary-lig:#d9cffc;
+  --primary-light: #EDE9FE;
+  --primary-light-light: #f5f3ff;
+  --secondary: #D9B6FB;
+  --text-main: #4C3B6B;
+  --text-light: #A49EB5;
+  --border-color: #E8E4F0;
+  --shadow-soft: 0 8px 25px rgba(183, 148, 244, 0.08);
+  --theme-text-dark: #9333EA;
+  --mood-bg: #FAF5FF;
+  --blindbox-bg: #F3ECFF;
+}

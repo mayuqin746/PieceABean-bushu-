@@ -1,0 +1,27 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Nunito', 'PingFang SC', sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-color);
+  background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+  transition: color 0.3s, background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+body.immersive {
+  overflow: hidden;
+  background-image: none;
+  background-color: var(--border-color);
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 10px; }
+
+a { text-decoration: none; color: inherit; }

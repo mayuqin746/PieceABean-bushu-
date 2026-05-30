@@ -1,0 +1,28 @@
+# FastAPI
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Database
+sqlalchemy>=2.0.35
+pymysql>=1.1.1
+cryptography>=43.0.0
+alembic>=1.13.2
+
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0,<5.0.0
+python-multipart>=0.0.12
+
+# Config & Validation
+pydantic[email]>=2.9.0
+pydantic-settings>=2.5.0
+
+# File handling
+python-multipart>=0.0.12
+pillow>=11.0.0
+openpyxl>=3.1.0
+
+# Dev
+pytest>=8.3.0
+httpx>=0.27.0
