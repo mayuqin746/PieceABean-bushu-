@@ -10,9 +10,7 @@
 
 import io
 import uuid
-import random
 import base64
-import math
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
@@ -70,7 +68,7 @@ def _open_and_prepare_image(data: bytes) -> Image.Image:
 
 
 def _pixelate(img: Image.Image, grid_w: int, grid_h: int) -> Image.Image:
-    return img.resize((grid_w, grid_h), Image.Resampling.BOX)
+    return img.resize((grid_w, grid_h), Image.Resampling.LANCZOS)
 
 
 def _extract_grid(img: Image.Image) -> list[list[str]]:
@@ -125,177 +123,15 @@ def _preview_to_base64(img: Image.Image) -> str:
     return base64.b64encode(buf.getvalue()).decode()
 
 
-# ─── 色彩空间转换：sRGB ↔ CIELAB (D65) ──────────────────────────────────────
-
-# D65 标准白点
-_D65_XN = 0.95047
-_D65_YN = 1.00000
-_D65_ZN = 1.08883
-
-
-def _srgb_to_linear(c: float) -> float:
-    if c <= 0.04045:
-        return c / 12.92
-    return ((c + 0.055) / 1.055) ** 2.4
-
-
-def _linear_to_srgb(c: float) -> float:
-    if c <= 0.0031308:
-        return c * 12.92
-    return 1.055 * (c ** (1.0 / 2.4)) - 0.055
-
-
-def _lab_f(t: float) -> float:
-    delta = 6.0 / 29.0
-    if t > delta ** 3:
-        return t ** (1.0 / 3.0)
-    return t / (3.0 * delta ** 2) + 4.0 / 29.0
-
-
-def _lab_f_inv(t: float) -> float:
-    delta = 6.0 / 29.0
-    if t > delta:
-        return t ** 3
-    return 3.0 * delta ** 2 * (t - 4.0 / 29.0)
-
-
-def _rgb_to_lab(r: int, g: int, b: int) -> tuple[float, float, float]:
-    r_lin = _srgb_to_linear(r / 255.0)
-    g_lin = _srgb_to_linear(g / 255.0)
-    b_lin = _srgb_to_linear(b / 255.0)
-
-    x = r_lin * 0.4124564 + g_lin * 0.3575761 + b_lin * 0.1804375
-    y = r_lin * 0.2126729 + g_lin * 0.7151522 + b_lin * 0.0721750
-    z = r_lin * 0.0193339 + g_lin * 0.1191920 + b_lin * 0.9503041
-
-    fx = _lab_f(x / _D65_XN)
-    fy = _lab_f(y / _D65_YN)
-    fz = _lab_f(z / _D65_ZN)
-
-    L = 116.0 * fy - 16.0
-    a = 500.0 * (fx - fy)
-    b_lab = 200.0 * (fy - fz)
-
-    return (L, a, b_lab)
-
-
-def _lab_to_rgb(L: float, a: float, b_lab: float) -> tuple[int, int, int]:
-    fy = (L + 16.0) / 116.0
-    fx = a / 500.0 + fy
-    fz = fy - b_lab / 200.0
-
-    x = _D65_XN * _lab_f_inv(fx)
-    y = _D65_YN * _lab_f_inv(fy)
-    z = _D65_ZN * _lab_f_inv(fz)
-
-    r_lin = x *  3.2404542 + y * -1.5371385 + z * -0.4985314
-    g_lin = x * -0.9692660 + y *  1.8760108 + z *  0.0415560
-    b_lin = x *  0.0556434 + y * -0.2040259 + z *  1.0572252
-
-    r = max(0, min(255, round(_linear_to_srgb(r_lin) * 255.0)))
-    g = max(0, min(255, round(_linear_to_srgb(g_lin) * 255.0)))
-    b = max(0, min(255, round(_linear_to_srgb(b_lin) * 255.0)))
-
-    return (r, g, b)
-
-
-# ─── K-means 颜色聚类 (感知均匀 Lab 空间) ───────────────────────────────────
-
-def _color_dist(
-    a: tuple[float, float, float], b: tuple[float, float, float]
-) -> float:
-    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)
-
-
-def _kmeans_pp_init(pixels: list[tuple[float, float, float]], k: int) -> list[tuple[float, float, float]]:
-    """K-means++ 初始化，让初始聚类中心尽量分散"""
-    centroids = [random.choice(pixels)]
-    for _ in range(1, k):
-        dists = [min(_color_dist(p, c) for c in centroids) for p in pixels]
-        total = sum(dists)
-        # pick weighted by distance squared
-        r = random.random() * total
-        acc = 0.0
-        for i, d in enumerate(dists):
-            acc += d
-            if acc >= r:
-                centroids.append(pixels[i])
-                break
-    return centroids
-
-
-def _kmeans_cluster(
-    pixels: list[tuple[float, float, float]], k: int, max_iters: int = 15
-) -> tuple[list[tuple[float, float, float]], list[int]]:
-    """K-means 聚类 (Lab 空间)，返回 (k 个聚类中心, 每个像素的簇索引)"""
-    n = len(pixels)
-    if k >= n:
-        labels = list(range(n))
-        return pixels[:], labels
-
-    centroids = _kmeans_pp_init(pixels, k)
-    labels = [0] * n
-
-    for _ in range(max_iters):
-        changed = False
-        for i, p in enumerate(pixels):
-            best_k = 0
-            best_d = float('inf')
-            for j, c in enumerate(centroids):
-                d = _color_dist(p, c)
-                if d < best_d:
-                    best_d = d
-                    best_k = j
-            if labels[i] != best_k:
-                labels[i] = best_k
-                changed = True
-        if not changed:
-            break
-        sums = [[0.0, 0.0, 0.0] for _ in range(k)]
-        counts = [0] * k
-        for i, p in enumerate(pixels):
-            lb = labels[i]
-            sums[lb][0] += p[0]
-            sums[lb][1] += p[1]
-            sums[lb][2] += p[2]
-            counts[lb] += 1
-        for j in range(k):
-            if counts[j] > 0:
-                centroids[j] = (
-                    sums[j][0] / counts[j],
-                    sums[j][1] / counts[j],
-                    sums[j][2] / counts[j],
-                )
-
-    return centroids, labels
-
-
 def _quantize(img: Image.Image, color_count: int, algorithm: str = "kmeans") -> Image.Image:
-    """降色处理，根据 algorithm 分流至不同实现"""
+    """降色处理（基于 Pillow C 实现，毫秒级完成）"""
     w, h = img.size
     total = w * h
     if color_count <= 0 or color_count >= total:
         return img
 
     if algorithm == "kmeans":
-        pixels = img.load()
-        all_pixels_rgb = [
-            (pixels[x, y][0], pixels[x, y][1], pixels[x, y][2])
-            for y in range(h) for x in range(w)
-        ]
-        all_pixels_lab = [_rgb_to_lab(*p) for p in all_pixels_rgb]
-
-        centroids_lab, labels = _kmeans_cluster(all_pixels_lab, color_count)
-
-        centroids_rgb = [_lab_to_rgb(*c) for c in centroids_lab]
-
-        out = Image.new("RGB", (w, h))
-        out_px = out.load()
-        for y in range(h):
-            for x in range(w):
-                idx = y * w + x
-                out_px[x, y] = centroids_rgb[labels[idx]]
-        return out
+        return img.convert("P", palette=Image.ADAPTIVE, colors=color_count).convert("RGB")
 
     if algorithm == "mediancut":
         return img.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT, kmeans=0).convert("RGB")
