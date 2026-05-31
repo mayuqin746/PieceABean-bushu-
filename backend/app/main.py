@@ -1,5 +1,6 @@
 """拼豆 PieceABean —— FastAPI 应用入口"""
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -35,6 +36,10 @@ origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+cors_env = os.getenv("BACKEND_CORS_ORIGINS", "")
+if cors_env:
+    origins.extend(origin.strip() for origin in cors_env.split(",") if origin.strip())
 
 app.add_middleware(
     CORSMiddleware,
