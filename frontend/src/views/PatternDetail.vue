@@ -216,10 +216,9 @@ async function downloadBlueprint() {
     alert('暂无图纸可供下载')
     return
   }
-  const url = fullUrl.replace(/^https?:\/\/[^/]+/, '')
   downloading.value = true
   try {
-    const res = await fetch(url)
+    const res = await fetch(fullUrl)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const blob = await res.blob()
     const objUrl = URL.createObjectURL(blob)
