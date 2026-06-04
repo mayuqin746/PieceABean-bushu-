@@ -110,9 +110,11 @@
       </div>
 
       <div class="faq-box">
-        <details v-for="(q, qi) in faqList" :key="qi" class="faq-item">
+        <p v-if="faqLoading" class="faq-loading">加载中...</p>
+        <p v-else-if="faqList.length === 0" class="faq-empty">暂无常见问题</p>
+        <details v-for="q in faqList" :key="q.id" class="faq-item">
           <summary class="faq-question">
-            <span class="faq-q-text">{{ q.q }}</span>
+            <span class="faq-q-text">{{ q.question }}</span>
             <div class="faq-btn-icon">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -120,7 +122,7 @@
             </div>
           </summary>
           <div class="faq-answer-wrapper">
-            <p class="faq-answer">{{ q.a }}</p>
+            <p class="faq-answer">{{ q.answer }}</p>
           </div>
         </details>
       </div>
@@ -147,7 +149,7 @@
               <h3 class="feedback-option-title">新功能提案</h3>
             </div>
             <p class="feedback-option-desc">希望支持某种品牌的特殊色卡？想要批量拼贴排版功能？告诉我你的奇思妙想！</p>
-            <button class="feedback-action-btn primary-action">提交新创意</button>
+            <button class="feedback-action-btn primary-action" @click="openSuggestionModal">提交新创意</button>
           </div>
 
           <div class="feedback-option-card hover-lift">
@@ -160,7 +162,7 @@
               <h3 class="feedback-option-title">问题与故障反馈</h3>
             </div>
             <p class="feedback-option-desc">图纸转换颜色偏差太大？移动端排版显示不全？请附带设备情况，帮我们快速修正。</p>
-            <button class="feedback-action-btn secondary-action">提交 Bug 反馈</button>
+            <button class="feedback-action-btn secondary-action" @click="openFeedbackModal">提交 Bug 反馈</button>
           </div>
         </div>
       </div>
@@ -188,6 +190,89 @@
     <div v-if="modalType" class="guide-modal-overlay" @click.self="modalType = null">
       <div class="guide-modal">
         <button class="gm-close" @click="modalType = null">✕</button>
+
+        <template v-if="modalType === 'suggestion'">
+          <h2>提交新创意</h2>
+          <p class="gm-desc">告诉我们你的奇思妙想，一起让拼豆工具变得更好</p>
+          <div v-if="suggestionSubmitted" class="rating-thanks">
+            <span class="thanks-icon">💡</span>
+            <p>感谢你的创意！我们会认真评估每一个提案。</p>
+          </div>
+          <div v-else class="suggestion-form">
+            <div class="form-field">
+              <label class="form-label">创意标题 <span class="required">*</span></label>
+              <input
+                v-model="suggestionForm.title"
+                class="form-input"
+                placeholder="给你的创意起个名字"
+                maxlength="200"
+              />
+            </div>
+            <div class="form-field">
+              <label class="form-label">创意描述 <span class="required">*</span></label>
+              <textarea
+                v-model="suggestionForm.content"
+                class="form-textarea"
+                placeholder="详细描述你的想法，越具体越容易被采纳哦"
+                rows="4"
+              ></textarea>
+            </div>
+            <div class="form-field">
+              <label class="form-label">联系方式 <span class="optional">(选填)</span></label>
+              <input
+                v-model="suggestionForm.contact"
+                class="form-input"
+                placeholder="邮箱或微信，方便我们进一步沟通"
+                maxlength="200"
+              />
+            </div>
+            <p v-if="suggestionError" class="rating-err">{{ suggestionError }}</p>
+            <button class="rating-submit" :disabled="suggestionSubmitting" @click="submitSuggestionFn">
+              {{ suggestionSubmitting ? '提交中...' : '提交创意' }}
+            </button>
+          </div>
+        </template>
+
+        <template v-if="modalType === 'feedback'">
+          <h2>提交反馈</h2>
+          <p class="gm-desc">遇到问题或有改进建议？请告诉我们</p>
+          <div v-if="feedbackSubmitted" class="rating-thanks">
+            <span class="thanks-icon">🙏</span>
+            <p>感谢你的反馈！我们会尽快处理。</p>
+          </div>
+          <div v-else class="feedback-form">
+            <div class="form-field">
+              <label class="form-label">反馈类型 <span class="required">*</span></label>
+              <select v-model="feedbackForm.type" class="form-select">
+                <option value="bug">🐛 Bug 报告</option>
+                <option value="suggestion">💡 功能建议</option>
+                <option value="other">📋 其他</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">反馈内容 <span class="required">*</span></label>
+              <textarea
+                v-model="feedbackForm.content"
+                class="form-textarea"
+                placeholder="请详细描述你遇到的问题或建议，包括设备、浏览器等信息"
+                rows="4"
+              ></textarea>
+            </div>
+            <div class="form-field">
+              <label class="form-label">联系方式 <span class="optional">(选填)</span></label>
+              <input
+                v-model="feedbackForm.contact"
+                class="form-input"
+                placeholder="邮箱或微信，方便我们跟进回复"
+                maxlength="200"
+              />
+            </div>
+            <p v-if="feedbackError" class="rating-err">{{ feedbackError }}</p>
+            <button class="rating-submit" :disabled="feedbackSubmitting" @click="submitFeedbackFn">
+              {{ feedbackSubmitting ? '提交中...' : '提交反馈' }}
+            </button>
+          </div>
+        </template>
 
         <template v-if="modalType === 'versions'">
           <h2>版本日志</h2>
@@ -246,6 +331,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, inject } from 'vue'
 import api from '@/api/index'
+import { submitSuggestion, submitFeedback, fetchFaqs } from '@/api/feedback'
+import type { FeedbackType, FAQItem } from '@/api/feedback'
 import { useAuthStore } from '@/stores/auth'
 
 const carouselIdx = ref(0)
@@ -320,14 +407,19 @@ window.addEventListener('resize', () => {
   scrollX.value = 0
 })
 
-const faqList = [
-  { q: '为什么上传图片后转换提示失败？', a: '请确保图片格式为 JPG 或 PNG，且体积不超过 5MB。另外，过高长宽比的极端长图可能会导致内存分配受限，建议裁剪为标准方形后重试。' },
-  { q: '支持上传 GIF 动态图纸吗？', a: '目前工具专注生成高保真静态实体拼豆图纸，暂不支持生成动态效果。如有需要，可以将 GIF 拆帧为静态图分层上传。' },
-  { q: '制作出来的图纸会自动随账号失效清空吗？', a: '对于已注册用户，图纸将长期保存在我们专门开辟的云端，永不失效；未注册用户的图纸数据保存在浏览器本地，清除缓存可能会丢失。' },
-  { q: '怎么进行更快捷的多图批量删除或迁移？', a: '登录后进入"个人素材库"，鼠标长按任意卡片或点击"批量管理"按钮即可进入多选编辑态，支持批量添加标签与统一移除。' },
-  { q: '如果搜索不到特定图纸该怎样应对？', a: '建议尽量使用简化或核心词汇搜索，或在讨论区/玩家交流群反馈。另外，直接下载图片并上传至"图片转拼豆"通常是最快的方法。' },
-  { q: '生成超清大图导出 PDF 时，加载非常缓慢？', a: '为了让您在 A4 打印时毫无锯齿，PDF 包含数百万像素点矢量色谱。首次排版大概需 2-4 秒，属正常过程，请不要关闭或刷新页面。' },
-]
+const faqList = ref<FAQItem[]>([])
+const faqLoading = ref(false)
+
+async function loadFaqs() {
+  faqLoading.value = true
+  try {
+    faqList.value = await fetchFaqs()
+  } catch {
+    // 加载失败时保持空列表，页面不报错
+  } finally {
+    faqLoading.value = false
+  }
+}
 
 const quickLinks = [
   { key: 'versions', label: '查看系统历史版本与更新日志' },
@@ -338,7 +430,7 @@ const quickLinks = [
 const auth = useAuthStore()
 const openLogin = inject<() => void>('openLogin', () => {})
 
-const modalType = ref<'versions' | 'community' | 'rating' | null>(null)
+const modalType = ref<'versions' | 'community' | 'rating' | 'suggestion' | 'feedback' | null>(null)
 
 function openGuideModal(key: string) {
   if (key === 'rating' && !auth.isLoggedIn) {
@@ -377,6 +469,74 @@ const ratingSubmitting = ref(false)
 const ratingSubmitted = ref(false)
 const ratingError = ref('')
 
+// ─── 创意建议 ─────────────────────────────────────────────────
+const suggestionForm = ref({ title: '', content: '', contact: '' })
+const suggestionSubmitting = ref(false)
+const suggestionSubmitted = ref(false)
+const suggestionError = ref('')
+
+function openSuggestionModal() {
+  suggestionForm.value = { title: '', content: '', contact: '' }
+  suggestionSubmitted.value = false
+  suggestionError.value = ''
+  modalType.value = 'suggestion'
+}
+
+async function submitSuggestionFn() {
+  if (!suggestionForm.value.title.trim() || !suggestionForm.value.content.trim()) {
+    suggestionError.value = '请填写标题和描述'
+    return
+  }
+  suggestionSubmitting.value = true
+  suggestionError.value = ''
+  try {
+    await submitSuggestion({
+      title: suggestionForm.value.title.trim(),
+      content: suggestionForm.value.content.trim(),
+      contact: suggestionForm.value.contact.trim() || undefined,
+    })
+    suggestionSubmitted.value = true
+  } catch (e: any) {
+    suggestionError.value = e?.response?.data?.detail ?? '提交失败，请重试'
+  } finally {
+    suggestionSubmitting.value = false
+  }
+}
+
+// ─── 问题反馈 ─────────────────────────────────────────────────
+const feedbackForm = ref({ type: 'bug' as FeedbackType, content: '', contact: '' })
+const feedbackSubmitting = ref(false)
+const feedbackSubmitted = ref(false)
+const feedbackError = ref('')
+
+function openFeedbackModal() {
+  feedbackForm.value = { type: 'bug', content: '', contact: '' }
+  feedbackSubmitted.value = false
+  feedbackError.value = ''
+  modalType.value = 'feedback'
+}
+
+async function submitFeedbackFn() {
+  if (!feedbackForm.value.content.trim()) {
+    feedbackError.value = '请填写反馈内容'
+    return
+  }
+  feedbackSubmitting.value = true
+  feedbackError.value = ''
+  try {
+    await submitFeedback({
+      type: feedbackForm.value.type,
+      content: feedbackForm.value.content.trim(),
+      contact: feedbackForm.value.contact.trim() || undefined,
+    })
+    feedbackSubmitted.value = true
+  } catch (e: any) {
+    feedbackError.value = e?.response?.data?.detail ?? '提交失败，请重试'
+  } finally {
+    feedbackSubmitting.value = false
+  }
+}
+
 async function submitRating() {
   const scores = ratingScores.value
   if (!scores.score_ui || !scores.score_layout || !scores.score_feature || !scores.score_ux) {
@@ -403,6 +563,7 @@ async function submitRating() {
 
 onMounted(() => {
   autoCarousel()
+  loadFaqs()
 })
 
 onUnmounted(() => {
@@ -744,6 +905,13 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.faq-loading, .faq-empty {
+  text-align: center;
+  padding: 32px 16px;
+  font-size: 14px;
+  color: var(--text-light);
 }
 
 .faq-item {
@@ -1163,4 +1331,67 @@ onUnmounted(() => {
 .rating-thanks { text-align: center; padding: 30px 0; }
 .thanks-icon { font-size: 48px; display: block; margin-bottom: 12px; }
 .rating-thanks p { font-size: 16px; font-weight: 900; color: var(--text-main); }
+
+/* ─── 表单弹窗通用样式 ─── */
+.suggestion-form, .feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.required { color: #e74c3c; }
+.optional { color: var(--text-light); font-weight: 500; }
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  background: white;
+  color: var(--text-main);
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: var(--primary);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  font-family: inherit;
+  background: white;
+  color: var(--text-main);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.form-select:focus {
+  border-color: var(--primary);
+}
 </style>

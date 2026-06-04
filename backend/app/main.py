@@ -10,11 +10,14 @@ from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.models import User, Pattern, Favorite, UserPattern, Rating  # 注册模型到 Base.metadata
+from app.models import User, Pattern, Favorite, UserPattern, Rating, Suggestion, Feedback, FAQ  # 注册模型到 Base.metadata
 from app.routers import users, patterns, generator
 from app.routers.admin import router as admin_router
 from app.routers.palette import router as palette_router
 from app.routers.ratings import router as ratings_router
+from app.routers.suggestions import router as suggestions_router
+from app.routers.feedbacks import router as feedbacks_router
+from app.routers.faqs import router as faqs_router
 
 
 @asynccontextmanager
@@ -70,6 +73,9 @@ app.include_router(generator.router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(palette_router, prefix="/api/v1")
 app.include_router(ratings_router, prefix="/api/v1")
+app.include_router(suggestions_router, prefix="/api/v1")
+app.include_router(feedbacks_router, prefix="/api/v1")
+app.include_router(faqs_router, prefix="/api/v1")
 
 
 # ─── 根路径健康检查 ─────────────────────────────────────────────────────────
