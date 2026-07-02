@@ -47,6 +47,7 @@ async function onLogin() {
   justify-content: center;
   align-items: center;
   background: var(--bg-color);
+  padding: 20px 12px;
 }
 .login-form {
   background: white;
@@ -54,6 +55,7 @@ async function onLogin() {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   width: 360px;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -79,4 +81,14 @@ button {
 }
 button:disabled { opacity: 0.6; }
 .error { color: #e74c3c; font-size: 13px; text-align: center; }
+
+@media (max-width: 480px) {
+  .login-form {
+    padding: 28px 20px;
+    border-radius: 18px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+}
 </style>

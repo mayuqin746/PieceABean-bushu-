@@ -362,11 +362,17 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 @media (max-width: 480px) {
+  .detail-container { padding: 14px 10px; }
+  .back-row { margin-bottom: 12px; }
   .info-title { font-size: 18px; }
-  .info-stats { gap: 12px; }
+  .info-stats { gap: 8px; justify-content: space-between; }
+  .stat { flex: 1; background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 8px 4px; }
   .stat-value { font-size: 18px; }
   .download-btn { font-size: 15px; padding: 12px; }
   .fav-btn { font-size: 14px; padding: 10px; }
+  .carousel-slide { padding: 10px; }
+  .viewer-img { max-width: 96vw; max-height: 74vh; }
+  .viewer-toolbar { bottom: max(12px, env(safe-area-inset-bottom)); }
 }
 
 /* 图片查看器 */

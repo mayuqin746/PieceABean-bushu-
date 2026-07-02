@@ -74,4 +74,25 @@ defineEmits<{ click: [] }>()
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-15px); }
 }
+
+@media (max-width: 640px) {
+  .floating-pet {
+    right: 12px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform-origin: right bottom;
+    animation: none;
+  }
+  .chat-bubble {
+    display: none;
+  }
+  .sprite {
+    width: 61px;
+    height: 75px;
+    background-size: 246px 75px;
+  }
+  @keyframes play {
+    from { background-position: 0 0; }
+    to { background-position: -246px 0; }
+  }
+}
 </style>

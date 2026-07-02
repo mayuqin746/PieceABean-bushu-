@@ -93,4 +93,17 @@ button:disabled { opacity: 0.6; }
 .switch { text-align: center; font-size: 14px; color: var(--text-light); margin-top: 14px; }
 .link { color: var(--primary); cursor: pointer; font-weight: bold; }
 .link:hover { text-decoration: underline; }
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal-card {
+    width: 100%;
+    max-width: none;
+    padding: 28px 20px 24px;
+    border-radius: 18px;
+  }
+}
 </style>

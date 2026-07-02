@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useThemeStore, type ThemeName } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
@@ -171,6 +171,14 @@ function isActive(name: string) {
   if (name === 'home') return route.path === '/'
   return route.path.startsWith(`/${name}`)
 }
+
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false
+    showDropdown.value = false
+  }
+)
 </script>
 
 <style scoped>
@@ -187,6 +195,7 @@ function isActive(name: string) {
   z-index: 1000;
   border-bottom: 1px solid var(--border-color);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  min-width: 0;
 }
 
 .logo {
@@ -201,6 +210,7 @@ function isActive(name: string) {
 .nav-links {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 
 .nav-item {
@@ -299,6 +309,7 @@ function isActive(name: string) {
   background: white;
   border: 1px solid var(--border-color);
   position: relative;
+  flex-shrink: 0;
 }
 
 .user-label {
@@ -504,6 +515,16 @@ function isActive(name: string) {
     padding: 4px;
     background: transparent;
     border: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-menu {
+    width: 100%;
+    max-width: 100vw;
+  }
+  .mobile-theme-dots {
+    flex-direction: column;
   }
 }
 

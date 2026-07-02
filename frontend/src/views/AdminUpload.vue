@@ -124,6 +124,7 @@ async function onSubmit() {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   width: 500px;
+  max-width: 100%;
 }
 h1 { font-size: 22px; text-align: center; color: var(--text-main); margin-bottom: 24px; }
 .field { margin-bottom: 16px; }
@@ -144,4 +145,25 @@ button {
 button:disabled { opacity: 0.6; }
 .success { color: #27ae60; font-size: 14px; text-align: center; }
 .error { color: #e74c3c; font-size: 14px; text-align: center; }
+
+@media (max-width: 480px) {
+  .admin-container {
+    align-items: flex-start;
+    padding: 20px 12px;
+  }
+  .upload-card {
+    padding: 24px 16px;
+    border-radius: 18px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+  .color-checkboxes {
+    gap: 8px;
+  }
+  .color-label {
+    width: calc(50% - 4px);
+    font-size: 13px;
+  }
+}
 </style>

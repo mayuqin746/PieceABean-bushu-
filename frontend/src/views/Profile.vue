@@ -330,11 +330,18 @@ onMounted(() => {
   .login-prompt { padding: 40px 16px; }
   .prompt-avatar { width: 60px; height: 60px; }
   .login-prompt h2 { font-size: 18px; }
+  .p-stats { gap: 10px; }
+  .stat-item { flex: 1; padding: 10px 8px; text-align: center; }
+  .p-tabs { overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .p-tabs::-webkit-scrollbar { display: none; }
   .p-tabs { gap: 10px; }
-  .p-tab { font-size: 14px; }
+  .p-tab { font-size: 14px; flex: 0 0 auto; }
   .edit-actions { flex-direction: column; }
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .g-card { padding: 8px; }
+  .g-img,
+  .g-img-placeholder { height: auto; aspect-ratio: 1 / 1; }
   .g-meta { font-size: 11px; flex-direction: column; gap: 2px; }
+  .card-delete { opacity: 1; }
 }
 </style>

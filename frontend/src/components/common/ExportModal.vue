@@ -311,9 +311,35 @@ async function onCopy() {
 .ex-copy-btn { background: #f1f5f9; color: var(--text-main); margin-top: 8px; }
 
 @media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end;
+  }
   .export-body { flex-direction: column; }
-  .ex-right { width: 100%; }
-  .ex-left { min-height: 200px; }
-  .modal-content { padding: 20px; }
+  .ex-right { width: 100%; min-height: 180px; }
+  .ex-left { min-height: 240px; }
+  .modal-content {
+    width: 100vw;
+    max-width: none;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+    padding: 20px;
+  }
+  .modal-content h2 {
+    font-size: 18px;
+    margin-bottom: 14px;
+    padding-right: 34px;
+  }
+  .close-btn {
+    top: 14px;
+    right: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .modal-content { padding: 16px 12px; }
+  .export-body { gap: 14px; }
+  .ex-left { min-height: 220px; }
+  .ex-action-btn { padding: 12px; }
+  .ex-list { max-height: 28dvh; }
 }
 </style>

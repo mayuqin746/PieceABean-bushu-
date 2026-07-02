@@ -275,9 +275,23 @@ function clearFilters() {
 }
 
 @media (max-width: 480px) {
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .search-row { margin-bottom: 12px; padding-bottom: 12px; }
+  .search-input { padding: 10px 36px; }
+  .active-filters { padding: 8px 10px; align-items: flex-start; }
+  .af-label { width: 100%; margin-right: 0; }
+  .clear-btn { margin-left: 0; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .g-card { padding: 8px; }
   .g-img img { padding: 8px; }
   .g-meta { font-size: 11px; }
+  .f-tags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .f-tags::-webkit-scrollbar { display: none; }
+  .f-tag,
+  .color-tag { flex: 0 0 auto; }
 }
 </style>

@@ -9,6 +9,12 @@
     </button>
 
     <!-- ====== 左侧参数面板 ====== -->
+    <div
+      v-if="leftPanelOpen || rightPanelOpen"
+      class="panel-scrim"
+      @click="leftPanelOpen = false; rightPanelOpen = false"
+    ></div>
+
     <aside class="ws-sidebar" :class="{ 'panel-open': leftPanelOpen }">
       <div class="ws-header">参数设置</div>
       <div class="ws-body">
@@ -884,7 +890,7 @@ function onBrandChange(e: Event) {
 .ws-toggle {
   display: none;
   position: fixed;
-  z-index: 100;
+  z-index: 160;
   padding: 8px 14px;
   border-radius: 20px;
   border: 1px solid var(--border-color);
@@ -909,9 +915,21 @@ function onBrandChange(e: Event) {
   right: 10px;
 }
 
+.panel-scrim {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .workspace { flex-direction: column; height: auto; min-height: calc(100vh - var(--header-height)); }
   .ws-toggle { display: block; }
+  .panel-scrim {
+    display: block;
+    position: fixed;
+    inset: var(--header-height) 0 0;
+    z-index: 90;
+    background: rgba(15, 23, 42, 0.28);
+    backdrop-filter: blur(2px);
+  }
   .ws-sidebar {
     position: fixed;
     top: var(--header-height);
@@ -919,7 +937,7 @@ function onBrandChange(e: Event) {
     bottom: 0;
     width: 320px;
     max-width: 85vw;
-    z-index: 100;
+    z-index: 140;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
@@ -958,6 +976,27 @@ function onBrandChange(e: Event) {
 }
 
 @media (max-width: 480px) {
+  .ws-toggle {
+    top: calc(var(--header-height) + 8px);
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+  .ws-sidebar {
+    width: min(300px, 88vw);
+  }
+  .ws-header {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+  .ws-body {
+    padding: 14px;
+  }
+  .upload-area {
+    max-height: 190px;
+  }
+  .control-group {
+    margin-bottom: 18px;
+  }
   .ws-center {
     height: calc(100vh - var(--header-height) - 20px);
   }
@@ -969,6 +1008,27 @@ function onBrandChange(e: Event) {
   }
   .guide-placeholder h2 {
     font-size: 17px;
+  }
+  .guide-icon {
+    font-size: 48px;
+  }
+  .zoom-controls {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: max(10px, env(safe-area-inset-bottom));
+    padding: 7px 12px;
+  }
+  .save-overlay {
+    padding: 14px;
+    align-items: flex-end;
+  }
+  .save-modal {
+    width: 100%;
+    padding: 20px;
+  }
+  .save-actions {
+    flex-direction: column;
   }
 }
 </style>

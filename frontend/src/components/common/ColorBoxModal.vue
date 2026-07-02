@@ -219,4 +219,32 @@ function onGoGallery() {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal-card {
+    width: 100%;
+    max-width: none;
+    padding: 28px 18px 22px;
+    border-radius: 18px;
+  }
+  .color-wheel {
+    width: 84px;
+    height: 84px;
+  }
+  .result-dot {
+    width: 72px;
+    height: 72px;
+  }
+  .btn-row {
+    flex-direction: column;
+  }
+  .btn-draw-again,
+  .btn-action {
+    width: 100%;
+  }
+}
 </style>

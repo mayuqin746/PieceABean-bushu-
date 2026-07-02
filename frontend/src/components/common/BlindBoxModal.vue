@@ -215,4 +215,28 @@ function onViewDetail() {
   25% { transform: rotate(-8deg); }
   75% { transform: rotate(8deg); }
 }
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal-card {
+    width: 100%;
+    max-width: none;
+    padding: 28px 18px 22px;
+    border-radius: 18px;
+  }
+  .pattern-preview {
+    width: min(180px, 58vw);
+    height: min(180px, 58vw);
+  }
+  .btn-row {
+    flex-direction: column;
+  }
+  .btn-draw-again,
+  .btn-detail {
+    width: 100%;
+  }
+}
 </style>

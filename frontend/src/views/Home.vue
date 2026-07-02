@@ -492,10 +492,11 @@ function onBlindBox() {
 @media (max-width: 640px) {
   .page-container { padding-left: 12px; padding-right: 12px; }
   .dashboard { grid-template-columns: 1fr; gap: 14px; }
-  .card-hero { grid-column: span 1; grid-row: span 1; min-height: 220px; }
+  .card-hero { grid-column: span 1; grid-row: span 1; min-height: 240px; }
   .card-tool { grid-column: span 1; }
   .hero-overlay { width: 100%; padding: 16px 16px 16px 20px; }
   .hero-title { font-size: 20px; }
+  .text-nowrap { white-space: normal; }
   .hero-desc { font-size: 12px; margin: 6px 0 12px 0; }
   .hero-btn { font-size: 12px; padding: 7px 14px; }
   .carousel-dots { bottom: 10px; }
@@ -507,5 +508,14 @@ function onBlindBox() {
   .g-title { font-size: 12px; }
   .bento-card { padding: 14px; }
   .blind-icon { width: 100px; height: 100px; }
+}
+
+@media (max-width: 380px) {
+  .card-hero { min-height: 210px; }
+  .hero-title { font-size: 18px; }
+  .hero-desc { display: none; }
+  .card-tool { gap: 12px; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-img img { padding: 8px; }
 }
 </style>

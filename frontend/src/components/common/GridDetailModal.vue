@@ -192,4 +192,35 @@ onMounted(() => {
   text-align: center; padding: 6px; color: #444;
   font-size: 12px; flex-shrink: 0;
 }
+
+@media (max-width: 640px) {
+  .detail-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .dt-title {
+    width: 100%;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .dt-info {
+    margin-right: 0;
+    font-size: 12px;
+  }
+  .dt-controls {
+    margin-left: auto;
+    gap: 6px;
+  }
+  .dt-controls button {
+    width: 32px;
+    height: 32px;
+  }
+  .detail-canvas {
+    max-width: 96vw;
+    max-height: calc(100dvh - 150px);
+  }
+}
 </style>

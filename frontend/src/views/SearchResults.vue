@@ -304,11 +304,13 @@ function changePage(p: number) {
 }
 
 @media (max-width: 480px) {
-  .results-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .r-card { padding: 8px; }
   .search-title { font-size: 16px; }
   .search-subtitle { font-size: 12px; }
   .pagination { gap: 10px; margin-top: 30px; }
   .pagination button { padding: 7px 14px; font-size: 13px; }
+  .r-title { overflow-wrap: anywhere; }
+  .r-meta { font-size: 11px; flex-direction: column; gap: 2px; }
 }
 </style>

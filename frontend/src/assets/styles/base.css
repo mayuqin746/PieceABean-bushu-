@@ -15,13 +15,55 @@ body {
   transition: color 0.3s, background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 0;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 body.immersive {
   overflow: hidden;
   background-image: none;
   background-color: var(--border-color);
 }
 
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 10px; }
 
 a { text-decoration: none; color: inherit; }
+
+@media (max-width: 640px) {
+  body {
+    background-size: 16px 16px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

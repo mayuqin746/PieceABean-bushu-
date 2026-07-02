@@ -213,6 +213,20 @@ function onBlindBox() {
   height: 100vh;
 }
 
+@media (max-width: 900px) {
+  .default-layout {
+    padding-top: calc(var(--header-height) + 18px);
+    padding-bottom: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .default-layout {
+    padding-top: calc(var(--header-height) + 12px);
+    padding-bottom: 36px;
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
