@@ -26,15 +26,15 @@
         </div>
 
         <div class="step-display-window">
-          <div class="step-display-track" :style="{ transform: `translateY(-${carouselIdx * 100}%)` }">
-            <div v-for="(item, i) in quickStartItems" :key="i" class="step-display-item">
+          <div class="step-display-track">
+            <div :key="carouselIdx" class="step-display-item">
               <div class="step-details-card">
                 <h3 class="step-detail-title">
                   <span class="title-decor-dot"></span>
-                  {{ item.title }}
+                  {{ quickStartItems[carouselIdx].title }}
                 </h3>
                 <ul class="step-detail-list">
-                  <li v-for="(tip, j) in item.tips" :key="j">
+                  <li v-for="(tip, j) in quickStartItems[carouselIdx].tips" :key="j">
                     <div class="step-list-icon">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                         <polyline points="20 6 9 17 4 12" />

@@ -1,5 +1,5 @@
 <template>
-  <div class="workspace">
+  <div class="workspace" :class="{ 'has-grid-data': hasGridData }">
     <button class="ws-toggle ws-toggle-left" :class="{ active: leftPanelOpen }" @click="leftPanelOpen = !leftPanelOpen">
       {{ leftPanelOpen ? '✕' : '☰' }} 参数
     </button>
@@ -132,10 +132,11 @@
     <!-- ====== 中央画布 ====== -->
     <section class="ws-center">
       <!-- 生成前引导 -->
-      <div v-if="!hasGridData" class="guide-placeholder">
+      <div v-if="!hasGridData" class="guide-placeholder" @click="triggerUpload">
         <span class="guide-icon">🖼️</span>
         <h2>上传图片开始创作</h2>
         <p>支持 JPG / PNG / WebP / BMP 格式</p>
+        <button class="guide-action" type="button">点击上传</button>
       </div>
 
       <!-- 画布 -->
@@ -738,6 +739,7 @@ function onBrandChange(e: Event) {
 .guide-placeholder {
   text-align: center;
   color: var(--text-light);
+  cursor: pointer;
 }
 .guide-icon {
   font-size: 64px;
@@ -751,6 +753,17 @@ function onBrandChange(e: Event) {
 }
 .guide-placeholder p {
   font-size: 13px;
+}
+.guide-action {
+  margin-top: 18px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #1e293b;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
 }
 
 .canvas-container {
@@ -975,6 +988,73 @@ function onBrandChange(e: Event) {
   }
 }
 
+@media (max-width: 640px) {
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100dvh - var(--header-height));
+    overflow: visible;
+    background: #eaeaef;
+  }
+  .ws-toggle,
+  .panel-scrim {
+    display: none;
+  }
+  .workspace > .ws-sidebar:not(.ws-sidebar-right) {
+    order: 1;
+  }
+  .ws-center {
+    order: 2;
+  }
+  .ws-sidebar-right {
+    order: 3;
+  }
+  .ws-sidebar,
+  .ws-sidebar.panel-open,
+  .ws-sidebar-right,
+  .ws-sidebar-right.panel-open {
+    position: static;
+    inset: auto;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    transform: none;
+    z-index: 1;
+    box-shadow: none;
+  }
+  .ws-sidebar {
+    border-bottom: 1px solid var(--border-color);
+  }
+  .ws-sidebar-right {
+    display: none;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+  .workspace.has-grid-data .ws-sidebar-right {
+    display: flex;
+  }
+  .ws-body {
+    overflow: visible;
+  }
+  .upload-area {
+    aspect-ratio: 16 / 9;
+    min-height: 160px;
+    max-height: none;
+  }
+  .ws-center {
+    height: auto;
+    min-height: 360px;
+    flex: none;
+  }
+  .canvas-container {
+    min-height: 360px;
+  }
+  .canvas-wrapper {
+    width: min(100%, calc(100vw - 32px));
+  }
+}
+
 @media (max-width: 480px) {
   .ws-toggle {
     top: calc(var(--header-height) + 8px);
@@ -982,7 +1062,7 @@ function onBrandChange(e: Event) {
     font-size: 12px;
   }
   .ws-sidebar {
-    width: min(300px, 88vw);
+    width: 100%;
   }
   .ws-header {
     padding: 14px 16px;
@@ -992,13 +1072,15 @@ function onBrandChange(e: Event) {
     padding: 14px;
   }
   .upload-area {
-    max-height: 190px;
+    min-height: 150px;
+    max-height: none;
   }
   .control-group {
     margin-bottom: 18px;
   }
   .ws-center {
-    height: calc(100vh - var(--header-height) - 20px);
+    height: auto;
+    min-height: 340px;
   }
   .canvas-wrapper {
     width: min(70vh, calc(100vw - 28px));

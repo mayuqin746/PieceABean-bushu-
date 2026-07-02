@@ -356,8 +356,8 @@ watch(
   flex-direction: column;
   justify-content: center;
   gap: 5px;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   z-index: 1001;
   margin-left: 12px;
@@ -530,12 +530,27 @@ watch(
 
 @media (max-width: 480px) {
   .navbar {
-    padding: 0 12px;
-    height: 56px;
+    padding: 0 14px;
+    height: 64px;
   }
   .logo {
-    height: 38px;
-    margin-right: 8px;
+    width: 118px;
+    height: auto;
+    max-height: 48px;
+    margin-right: 10px;
+  }
+  .avatar {
+    width: 36px;
+    height: 36px;
+  }
+  .hamburger {
+    width: 36px;
+    height: 36px;
+    gap: 6px;
+    margin-left: 14px;
+  }
+  .hamburger span {
+    height: 3px;
   }
 }
 </style>

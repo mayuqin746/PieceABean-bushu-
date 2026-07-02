@@ -61,6 +61,11 @@ a { text-decoration: none; color: inherit; }
     background-size: 16px 16px;
   }
 
+  body.immersive {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   input,
   select,
   textarea {

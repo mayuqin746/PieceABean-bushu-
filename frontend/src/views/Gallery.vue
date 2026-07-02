@@ -285,13 +285,11 @@ function clearFilters() {
   .g-img img { padding: 8px; }
   .g-meta { font-size: 11px; }
   .f-tags {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding-bottom: 0;
   }
-  .f-tags::-webkit-scrollbar { display: none; }
-  .f-tag,
-  .color-tag { flex: 0 0 auto; }
+  .f-tag { padding: 6px 12px; }
+  .color-tag { width: 26px; height: 26px; }
 }
 </style>

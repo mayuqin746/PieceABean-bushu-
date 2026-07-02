@@ -197,7 +197,7 @@ function onBlindBox() {
   :root { --header-height: 70px; }
 }
 @media (max-width: 480px) {
-  :root { --header-height: 56px; }
+  :root { --header-height: 64px; }
 }
 </style>
 
