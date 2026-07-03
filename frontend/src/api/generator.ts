@@ -14,6 +14,8 @@ export interface PaletteResponse {
   perler: PaletteColor[]
 }
 
+export type GridColor = string | null
+
 export interface GenerateParams {
   file: File
   grid_size: number
@@ -23,7 +25,7 @@ export interface GenerateParams {
 
 export interface GenerateResponse {
   task_id: string
-  grid_data: string[][]
+  grid_data: GridColor[][]
   preview_base64: string
   width: number
   height: number

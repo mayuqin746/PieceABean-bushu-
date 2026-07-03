@@ -43,13 +43,14 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, inject, type Ref } from 'vue'
+import type { GridColor } from '@/api/generator'
 
 const props = defineProps<{ visible: boolean }>()
 defineEmits<{ close: [] }>()
 
 interface ExportData {
-  gridData: string[][]
-  mappedGrid: { hex: string; color_no: string | null; text_color: string }[][]
+  gridData: GridColor[][]
+  mappedGrid: { hex: GridColor; color_no: string | null; text_color: string }[][]
   brandStats: { color_no: string; hex: string; count: number }[]
   totalBeads: number
   brandLabel: string
@@ -134,6 +135,7 @@ function drawCanvas(d: ExportData) {
     for (let x = 0; x < gw; x++) {
       const cell = d.mappedGrid[y]?.[x]
       const hex = cell?.hex ?? d.gridData[y][x]
+      if (!hex) continue
       const left = ox + x * (CELL_PX + BORDER_PX) + BORDER_PX
       const top = oy + y * (CELL_PX + BORDER_PX) + BORDER_PX
 

@@ -1,4 +1,5 @@
 import api from './index'
+import type { GridColor } from './generator'
 
 export interface PatternItem {
   id: number
@@ -64,7 +65,7 @@ export interface UserPatternItem {
   title: string
   category: string
   colors: string[] | null
-  grid_data: string[][] | null
+  grid_data: GridColor[][] | null
   width: number
   height: number
   beads_count: number
@@ -91,7 +92,7 @@ export async function saveMyPattern(params: {
   title: string
   category: string
   colors: string[]
-  grid_data: string[][]
+  grid_data: GridColor[][]
   width: number
   height: number
   beads_count: number

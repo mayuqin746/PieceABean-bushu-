@@ -28,6 +28,7 @@
             @change="onFileChange"
           />
           <img v-if="thumbnailUrl" :src="thumbnailUrl" class="upload-thumb" alt="预览" />
+          <span v-if="cropApplied" class="crop-applied-badge">已裁剪</span>
           <div v-else class="upload-placeholder">
             <span class="upload-icon">+</span>
             <span>点击上传图片</span>
@@ -35,6 +36,15 @@
         </div>
 
         <!-- 网格尺寸 -->
+        <button
+          v-if="thumbnailUrl"
+          type="button"
+          class="btn-crop"
+          @click.stop="openCropEditor"
+        >
+          {{ cropApplied ? '重新调整裁剪区域' : '调整裁剪区域' }}
+        </button>
+
         <div class="control-group">
           <div class="control-label-row">
             <span class="control-label">网格尺寸</span>
@@ -44,9 +54,20 @@
             type="range"
             class="range-slider"
             min="15"
-            max="80"
+            max="120"
             v-model.number="slidingSize"
           />
+          <div class="size-input-row">
+            <label>最长边</label>
+            <input
+              v-model.number="slidingSize"
+              class="size-number-input"
+              type="number"
+              min="15"
+              max="200"
+              step="1"
+            />
+          </div>
           <div class="size-info-row">
             <span>{{ gridWidth || slidingSize }} × {{ gridHeight || slidingSize }} 格</span>
             <span class="physical-size">{{ physicalSize }}</span>
@@ -153,7 +174,8 @@
               v-for="(cell, idx) in flatCells"
               :key="idx"
               class="cell"
-              :style="{ backgroundColor: cell.hex }"
+              :class="{ 'cell-empty': !cell.hex }"
+              :style="{ backgroundColor: cell.hex || 'transparent' }"
             >
               <span
                 v-if="cell.color_no"
@@ -219,7 +241,7 @@
           <div class="ws-footer">
             <div class="total-row">
               <span>总豆数：</span>
-              <span class="total-count">{{ mapping.totalBeads.value }} 颗</span>
+              <span class="total-count">{{ gridBeads || mapping.totalBeads.value }} 颗</span>
             </div>
           </div>
         </template>
@@ -247,6 +269,40 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div v-if="cropEditorOpen" class="crop-overlay" @click.self="cropEditorOpen = false">
+        <div class="crop-modal">
+          <div class="crop-head">
+            <h3>裁剪主体区域</h3>
+            <button type="button" class="crop-close" @click="cropEditorOpen = false">×</button>
+          </div>
+          <div v-if="cropImageUrl" class="crop-stage">
+            <img :src="cropImageUrl" alt="裁剪预览" class="crop-image" />
+            <div
+              class="crop-box"
+              :style="{
+                left: crop.x + '%',
+                top: crop.y + '%',
+                width: crop.w + '%',
+                height: crop.h + '%',
+              }"
+            ></div>
+          </div>
+          <div class="crop-controls">
+            <label>左侧 <input v-model.number="crop.x" type="range" min="0" :max="100 - crop.w" /></label>
+            <label>顶部 <input v-model.number="crop.y" type="range" min="0" :max="100 - crop.h" /></label>
+            <label>宽度 <input v-model.number="crop.w" type="range" min="20" :max="100 - crop.x" /></label>
+            <label>高度 <input v-model.number="crop.h" type="range" min="20" :max="100 - crop.y" /></label>
+          </div>
+          <div class="crop-actions">
+            <button type="button" class="save-cancel" @click="resetCrop">重置</button>
+            <button type="button" class="save-confirm" @click="applyCrop">使用裁剪区域</button>
+          </div>
+          <p class="crop-note">透明 PNG 的透明区域会在图纸中保留为空格，不会计入豆数。</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -262,6 +318,7 @@ import type { MappedCell } from '@/composables/useColorMapping'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
+const originalImageUrl = ref<string | null>(null)
 const thumbnailUrl = ref<string | null>(null)
 const slidingSize = ref(29)
 const gridWidth = ref(0)
@@ -329,6 +386,10 @@ const saveMsg = ref('')
 const saveOk = ref(false)
 const leftPanelOpen = ref(false)
 const rightPanelOpen = ref(false)
+const cropEditorOpen = ref(false)
+const cropImageUrl = ref<string | null>(null)
+const crop = ref({ x: 0, y: 0, w: 100, h: 100 })
+const cropApplied = ref(false)
 
 // ========== 初始化 ==========
 
@@ -342,6 +403,16 @@ onMounted(async () => {
 })
 
 // ========== 方法 ==========
+
+watch(slidingSize, (val) => {
+  if (!Number.isFinite(val)) {
+    slidingSize.value = 29
+  } else if (val < 15) {
+    slidingSize.value = 15
+  } else if (val > 200) {
+    slidingSize.value = 200
+  }
+})
 
 function triggerUpload() {
   fileInput.value?.click()
@@ -357,7 +428,97 @@ function onFileChange(e: Event) {
   if (thumbnailUrl.value) {
     URL.revokeObjectURL(thumbnailUrl.value)
   }
-  thumbnailUrl.value = URL.createObjectURL(file)
+  if (originalImageUrl.value && originalImageUrl.value !== thumbnailUrl.value) {
+    URL.revokeObjectURL(originalImageUrl.value)
+  }
+  originalImageUrl.value = URL.createObjectURL(file)
+  thumbnailUrl.value = originalImageUrl.value
+  cropImageUrl.value = originalImageUrl.value
+  resetCrop()
+  cropApplied.value = false
+  cropEditorOpen.value = true
+}
+
+function openCropEditor() {
+  if (!originalImageUrl.value) return
+  cropImageUrl.value = originalImageUrl.value
+  cropEditorOpen.value = true
+}
+
+function resetCrop() {
+  crop.value = { x: 0, y: 0, w: 100, h: 100 }
+}
+
+async function applyCrop() {
+  if (!originalImageUrl.value || !selectedFile.value) {
+    cropEditorOpen.value = false
+    return
+  }
+
+  if (isFullCrop()) {
+    if (thumbnailUrl.value && thumbnailUrl.value !== originalImageUrl.value) {
+      URL.revokeObjectURL(thumbnailUrl.value)
+    }
+    thumbnailUrl.value = originalImageUrl.value
+    cropApplied.value = false
+    cropEditorOpen.value = false
+    return
+  }
+
+  const blob = await renderCropBlob()
+  if (blob) {
+    if (thumbnailUrl.value && thumbnailUrl.value !== originalImageUrl.value) {
+      URL.revokeObjectURL(thumbnailUrl.value)
+    }
+    thumbnailUrl.value = URL.createObjectURL(blob)
+    cropApplied.value = true
+  }
+  cropEditorOpen.value = false
+}
+
+function isFullCrop() {
+  return crop.value.x === 0 && crop.value.y === 0 && crop.value.w === 100 && crop.value.h === 100
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Cannot load crop image'))
+    img.src = src
+  })
+}
+
+async function renderCropBlob(): Promise<Blob | null> {
+  if (!originalImageUrl.value || isFullCrop()) {
+    return null
+  }
+
+  const img = await loadImage(originalImageUrl.value)
+  const sx = Math.round((crop.value.x / 100) * img.naturalWidth)
+  const sy = Math.round((crop.value.y / 100) * img.naturalHeight)
+  const sw = Math.max(1, Math.round((crop.value.w / 100) * img.naturalWidth))
+  const sh = Math.max(1, Math.round((crop.value.h / 100) * img.naturalHeight))
+  const canvas = document.createElement('canvas')
+  canvas.width = sw
+  canvas.height = sh
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.clearRect(0, 0, sw, sh)
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh)
+
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+}
+
+async function createUploadFile(): Promise<File> {
+  if (!selectedFile.value || !originalImageUrl.value || isFullCrop()) {
+    return selectedFile.value!
+  }
+
+  const blob = await renderCropBlob()
+  if (!blob) return selectedFile.value
+  const name = selectedFile.value.name.replace(/\.[^.]+$/, '') + '_crop.png'
+  return new File([blob], name, { type: 'image/png' })
 }
 
 async function doGenerate() {
@@ -366,8 +527,9 @@ async function doGenerate() {
   showSaveForm.value = false
   saveMsg.value = ''
   try {
+    const uploadFile = await createUploadFile()
     const res = await generatePattern({
-      file: selectedFile.value,
+      file: uploadFile,
       grid_size: slidingSize.value,
       color_count: slidingColors.value,
       algorithm: algorithm.value,
@@ -380,7 +542,7 @@ async function doGenerate() {
       gridData: mapping.gridData.value,
       mappedGrid: mapping.mappedGrid.value,
       brandStats: mapping.brandStats.value,
-      totalBeads: mapping.totalBeads.value,
+      totalBeads: res.beads_count,
       brandLabel: brandLabel.value,
       gridWidth: res.width,
       gridHeight: res.height,
@@ -491,6 +653,7 @@ function onBrandChange(e: Event) {
 
 /* ========== 上传区域 ========== */
 .upload-area {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   border: 2px dashed var(--primary);
@@ -506,6 +669,23 @@ function onBrandChange(e: Event) {
 }
 .upload-area:hover {
   border-color: var(--text-main);
+}
+
+.btn-crop {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  margin: -8px 0 18px;
+}
+.btn-crop:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
 .upload-placeholder {
@@ -526,6 +706,18 @@ function onBrandChange(e: Event) {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.crop-applied-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 /* ========== 控件 ========== */
@@ -559,6 +751,30 @@ function onBrandChange(e: Event) {
   margin-top: 6px;
   font-size: 13px;
   font-weight: bold;
+}
+.size-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-light);
+}
+.size-number-input {
+  width: 90px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-main);
+  font-weight: 900;
+  text-align: right;
+  outline: none;
+}
+.size-number-input:focus {
+  border-color: var(--primary);
 }
 .physical-size {
   color: var(--primary);
@@ -706,6 +922,105 @@ function onBrandChange(e: Event) {
 }
 .save-ok { color: #27ae60; font-size: 13px; margin-top: 10px; text-align: center; font-weight: bold; }
 .save-err { color: #e74c3c; font-size: 13px; margin-top: 10px; text-align: center; font-weight: bold; }
+.crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  background: rgba(15, 23, 42, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.crop-modal {
+  width: min(720px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.24);
+}
+.crop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.crop-head h3 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 18px;
+  font-weight: 900;
+}
+.crop-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: var(--text-main);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.crop-stage {
+  position: relative;
+  width: 100%;
+  max-height: 52vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background:
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+.crop-image {
+  width: 100%;
+  max-height: 52vh;
+  object-fit: contain;
+  display: block;
+}
+.crop-box {
+  position: absolute;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.42);
+  pointer-events: none;
+}
+.crop-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.crop-controls label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text-light);
+}
+.crop-controls input {
+  width: 100%;
+}
+.crop-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.crop-note {
+  margin: 12px 0 0;
+  color: var(--text-light);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .btn-loading {
   display: inline-flex;
   align-items: center;
@@ -795,6 +1110,15 @@ function onBrandChange(e: Event) {
   position: relative;
   overflow: hidden;
   outline: 1px solid rgba(0,0,0,0.3);
+}
+.cell-empty {
+  background-image:
+    linear-gradient(45deg, rgba(148,163,184,0.18) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148,163,184,0.18) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148,163,184,0.18) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148,163,184,0.18) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
 }
 
 .cell-label {

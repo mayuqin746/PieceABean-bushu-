@@ -1,8 +1,8 @@
 import { ref, computed, watch } from 'vue'
-import type { PaletteColor, PaletteResponse } from '@/api/generator'
+import type { GridColor, PaletteColor, PaletteResponse } from '@/api/generator'
 
 export interface MappedCell {
-  hex: string
+  hex: GridColor
   color_no: string | null
   text_color: 'black' | 'white'
 }
@@ -86,7 +86,7 @@ export function useColorMapping() {
     hama: [],
     perler: [],
   })
-  const gridData = ref<string[][]>([])
+  const gridData = ref<GridColor[][]>([])
   const mappedGrid = ref<MappedCell[][]>([])
   const brandStats = ref<BrandStat[]>([])
 
@@ -109,7 +109,7 @@ export function useColorMapping() {
     computeMapping()
   }
 
-  function setGridData(data: string[][]) {
+  function setGridData(data: GridColor[][]) {
     gridData.value = data
     computeMapping()
   }
@@ -150,6 +150,10 @@ export function useColorMapping() {
       const row: MappedCell[] = []
       for (let x = 0; x < gd[y].length; x++) {
         const hex = gd[y][x]
+        if (!hex) {
+          row.push({ hex: null, color_no: null, text_color: 'black' })
+          continue
+        }
         const closest = brandPalette.length > 0 ? findClosest(hex, brandPalette) : null
         const displayHex = closest ? closest.hex : hex
         const rgb = hexToRgb(displayHex)

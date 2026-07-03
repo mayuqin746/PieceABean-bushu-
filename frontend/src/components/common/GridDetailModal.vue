@@ -33,10 +33,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
+import type { GridColor } from '@/api/generator'
 
 const props = defineProps<{
   visible: boolean
-  gridData: string[][] | null
+  gridData: GridColor[][] | null
   width: number
   height: number
   title: string
@@ -79,6 +80,7 @@ function draw() {
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const hex = props.gridData[y]?.[x] || '#ccc'
+      if (!props.gridData[y]?.[x]) continue
       ctx.fillStyle = hex
       ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE)
     }

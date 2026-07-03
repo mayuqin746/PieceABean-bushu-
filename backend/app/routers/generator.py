@@ -27,7 +27,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 class GenerateResponse(BaseModel):
     task_id: str
-    grid_data: list[list[str]]
+    grid_data: list[list[str | None]]
     preview_base64: str
     width: int
     height: int
@@ -53,17 +53,8 @@ def _open_and_prepare_image(data: bytes) -> Image.Image:
     except Exception:
         raise HTTPException(status_code=400, detail="Cannot decode image file")
 
-    if img.mode == "RGBA":
-        bg = Image.new("RGB", img.size, (255, 255, 255))
-        bg.paste(img, mask=img.split()[3])
-        img = bg
-    elif img.mode == "P":
+    if img.mode != "RGBA":
         img = img.convert("RGBA")
-        bg = Image.new("RGB", img.size, (255, 255, 255))
-        bg.paste(img, mask=img.split()[3])
-        img = bg
-    elif img.mode != "RGB":
-        img = img.convert("RGB")
     return img
 
 
@@ -71,15 +62,15 @@ def _pixelate(img: Image.Image, grid_w: int, grid_h: int) -> Image.Image:
     return img.resize((grid_w, grid_h), Image.Resampling.LANCZOS)
 
 
-def _extract_grid(img: Image.Image) -> list[list[str]]:
+def _extract_grid(img: Image.Image) -> list[list[str | None]]:
     pixels = img.load()
     w, h = img.size
     grid = []
     for y in range(h):
         row = []
         for x in range(w):
-            r, g, b = pixels[x, y]
-            row.append(f"#{r:02X}{g:02X}{b:02X}")
+            r, g, b, a = pixels[x, y]
+            row.append(None if a < 128 else f"#{r:02X}{g:02X}{b:02X}")
         grid.append(row)
     return grid
 
@@ -93,7 +84,7 @@ def _cell_pixel_size(grid_size: int) -> int:
         return 8
 
 
-def _generate_preview(grid_data: list[list[str]], cell_px: int, border_px: int = 1) -> Image.Image:
+def _generate_preview(grid_data: list[list[str | None]], cell_px: int, border_px: int = 1) -> Image.Image:
     grid_h = len(grid_data)
     grid_w = len(grid_data[0]) if grid_data else 0
     total_w = grid_w * (cell_px + border_px) + border_px
@@ -105,6 +96,8 @@ def _generate_preview(grid_data: list[list[str]], cell_px: int, border_px: int =
     for y in range(grid_h):
         for x in range(grid_w):
             hex_color = grid_data[y][x]
+            if hex_color is None:
+                continue
             r = int(hex_color[1:3], 16)
             g = int(hex_color[3:5], 16)
             b = int(hex_color[5:7], 16)
@@ -130,14 +123,24 @@ def _quantize(img: Image.Image, color_count: int, algorithm: str = "kmeans") -> 
     if color_count <= 0 or color_count >= total:
         return img
 
+    alpha = img.getchannel("A")
+    rgb = Image.new("RGB", img.size, (255, 255, 255))
+    rgb.paste(img.convert("RGB"), mask=alpha)
+
     if algorithm == "kmeans":
-        return img.convert("P", palette=Image.ADAPTIVE, colors=color_count).convert("RGB")
+        quantized = rgb.convert("P", palette=Image.ADAPTIVE, colors=color_count).convert("RGBA")
+        quantized.putalpha(alpha)
+        return quantized
 
     if algorithm == "mediancut":
-        return img.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT, kmeans=0).convert("RGB")
+        quantized = rgb.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT, kmeans=0).convert("RGBA")
+        quantized.putalpha(alpha)
+        return quantized
 
     if algorithm == "octree":
-        return img.quantize(colors=color_count, method=Image.Quantize.FASTOCTREE).convert("RGB")
+        quantized = rgb.quantize(colors=color_count, method=Image.Quantize.FASTOCTREE).convert("RGBA")
+        quantized.putalpha(alpha)
+        return quantized
 
     return img
 
@@ -147,7 +150,7 @@ def _quantize(img: Image.Image, color_count: int, algorithm: str = "kmeans") -> 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(
     file: UploadFile = File(..., description="Upload image (JPG/PNG/WebP/BMP)"),
-    grid_size: int = Form(29, ge=10, le=100, description="Grid size — target max dimension (default 29)"),
+    grid_size: int = Form(29, ge=10, le=200, description="Grid size — target max dimension (default 29)"),
     color_count: int = Form(0, ge=0, le=64, description="Target color count (0 = no clustering)"),
     algorithm: str = Form("kmeans", description="Color reduction algorithm: kmeans|mediancut|octree"),
 ):
@@ -186,7 +189,7 @@ async def generate(
         preview_base64=preview_base64,
         width=grid_w,
         height=grid_h,
-        beads_count=grid_w * grid_h,
+        beads_count=sum(1 for row in grid_data for cell in row if cell is not None),
     )
 
 
