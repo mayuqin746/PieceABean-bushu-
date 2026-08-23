@@ -3,9 +3,10 @@
 
 该模块负责：
 1. 接收用户上传的原始图片，一步完成上传+生成（全程内存处理，不落盘）
-2. K-means 颜色聚类 + Artkal 色板映射，将图片量化为指定数量的拼豆颜色
+2. 保留透明蒙版，并按目标尺寸进行 BOX 面积网格采样
 3. 生成带格子边框的预览 PNG（base64 返回）
-4. 提供品牌色板数据供前端本地匹配
+4. 保留供直接 API 调用者使用的可选颜色量化能力
+5. 提供品牌色板数据供前端完成颜色归并和色号匹配
 """
 
 import io
@@ -53,16 +54,15 @@ def _open_and_prepare_image(data: bytes) -> Image.Image:
     except Exception:
         raise HTTPException(status_code=400, detail="Cannot decode image file")
 
-    if img.mode != "RGBA":
-        img = img.convert("RGBA")
-    return img
+    return img.convert("RGBA")
 
 
 def _pixelate(img: Image.Image, grid_w: int, grid_h: int) -> Image.Image:
-    return img.resize((grid_w, grid_h), Image.Resampling.LANCZOS)
+    # BOX 按目标格覆盖面积取平均，不会像 LANCZOS 那样在高反差边缘产生振铃和额外过渡色。
+    return img.resize((grid_w, grid_h), Image.Resampling.BOX)
 
 
-def _extract_grid(img: Image.Image) -> list[list[str | None]]:
+def _extract_grid(img: Image.Image, alpha_threshold: int = 96) -> list[list[str | None]]:
     pixels = img.load()
     w, h = img.size
     grid = []
@@ -70,7 +70,16 @@ def _extract_grid(img: Image.Image) -> list[list[str | None]]:
         row = []
         for x in range(w):
             r, g, b, a = pixels[x, y]
-            row.append(None if a < 128 else f"#{r:02X}{g:02X}{b:02X}")
+            if a < alpha_threshold:
+                row.append(None)
+                continue
+            # 半透明像素按白色底材预览；透明度较低的格子仍保留为空位。
+            if a < 255:
+                alpha = a / 255
+                r = round(r * alpha + 255 * (1 - alpha))
+                g = round(g * alpha + 255 * (1 - alpha))
+                b = round(b * alpha + 255 * (1 - alpha))
+            row.append(f"#{r:02X}{g:02X}{b:02X}")
         grid.append(row)
     return grid
 
@@ -129,20 +138,22 @@ def _quantize(img: Image.Image, color_count: int, algorithm: str = "kmeans") -> 
 
     if algorithm == "kmeans":
         quantized = rgb.convert("P", palette=Image.ADAPTIVE, colors=color_count).convert("RGBA")
-        quantized.putalpha(alpha)
-        return quantized
+    elif algorithm == "mediancut":
+        quantized = rgb.quantize(
+            colors=color_count,
+            method=Image.Quantize.MEDIANCUT,
+            kmeans=0,
+        ).convert("RGBA")
+    elif algorithm == "octree":
+        quantized = rgb.quantize(
+            colors=color_count,
+            method=Image.Quantize.FASTOCTREE,
+        ).convert("RGBA")
+    else:
+        return img
 
-    if algorithm == "mediancut":
-        quantized = rgb.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT, kmeans=0).convert("RGBA")
-        quantized.putalpha(alpha)
-        return quantized
-
-    if algorithm == "octree":
-        quantized = rgb.quantize(colors=color_count, method=Image.Quantize.FASTOCTREE).convert("RGBA")
-        quantized.putalpha(alpha)
-        return quantized
-
-    return img
+    quantized.putalpha(alpha)
+    return quantized
 
 
 # ─── 路由 ───────────────────────────────────────────────────────────────────

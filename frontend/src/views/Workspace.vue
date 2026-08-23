@@ -28,8 +28,8 @@
             @change="onFileChange"
           />
           <img v-if="thumbnailUrl" :src="thumbnailUrl" class="upload-thumb" alt="预览" />
-          <span v-if="cropApplied" class="crop-applied-badge">已裁剪</span>
-          <div v-else class="upload-placeholder">
+          <span v-if="thumbnailUrl && cropApplied" class="crop-applied-badge">已裁剪</span>
+          <div v-else-if="!thumbnailUrl" class="upload-placeholder">
             <span class="upload-icon">+</span>
             <span>点击上传图片</span>
           </div>
@@ -77,35 +77,85 @@
 
         <!-- 颜色数量 -->
         <div class="control-group">
-          <span class="control-label">颜色数量</span>
-          <select v-model.number="slidingColors" class="tool-select">
-            <option :value="0">原始颜色（不限制）</option>
-            <option :value="4">4 种颜色</option>
-            <option :value="6">6 种颜色</option>
-            <option :value="8">8 种颜色</option>
-            <option :value="12">12 种颜色</option>
-            <option :value="16">16 种颜色</option>
-            <option :value="24">24 种颜色</option>
-            <option :value="32">32 种颜色</option>
-          </select>
+          <div class="control-label-row">
+            <span class="control-label">{{ hasBrandSelected ? '目标色号数' : '颜色数量' }}</span>
+            <button type="button" class="text-mini-button" @click="slidingColors = 0">不限制</button>
+          </div>
+          <div class="preset-row">
+            <button
+              v-for="preset in colorPresetOptions"
+              :key="preset.value"
+              type="button"
+              class="preset-button"
+              :class="{ active: slidingColors === preset.value }"
+              @click="slidingColors = preset.value"
+            >
+              {{ preset.label }}
+            </button>
+          </div>
+          <input
+            type="range"
+            class="range-slider"
+            min="6"
+            max="64"
+            step="1"
+            :disabled="slidingColors === 0"
+            :value="normalizedColorCount"
+            @input="onColorSliderInput"
+          />
+          <div class="size-input-row">
+            <label>{{ colorLimitLabel }}</label>
+            <input
+              v-model.number="slidingColors"
+              class="size-number-input"
+              type="number"
+              min="0"
+              max="64"
+              step="1"
+            />
+          </div>
+          <label class="option-check">
+            <input v-model="strictColorLimit" type="checkbox" />
+            <span>严格限制颜色总数（包含轮廓色）</span>
+          </label>
         </div>
 
-        <!-- 底层算法 -->
+        <!-- 拼豆结构优化 -->
         <div class="control-group">
-          <span class="control-label">底层算法</span>
-          <select v-model="algorithm" class="tool-select">
-            <option value="">-- 请选择底层方法 --</option>
-            <option value="kmeans">K-Means 聚类 (适合大色块)</option>
-            <option value="mediancut">中位切分法 (适合保留细节)</option>
-            <option value="octree">八叉树算法 (适合渐变平滑)</option>
+          <span class="control-label">背景处理</span>
+          <select v-model="backgroundMode" class="tool-select">
+            <option value="auto-light">自动留空连通的浅色背景</option>
+            <option value="keep">保留原图背景</option>
           </select>
+          <p class="control-hint">透明 PNG 会始终保留空格；自动模式仅清理与画布边缘相连的近白色背景。</p>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">固定轮廓</span>
+          <select v-model="outlineMode" class="tool-select">
+            <option value="black">黑色一格轮廓</option>
+            <option value="white">白色一格轮廓</option>
+            <option value="clear">透明/留空边缘</option>
+            <option value="none">不添加轮廓</option>
+          </select>
+          <p class="control-hint">轮廓根据透明区域或自动清理后的背景生成，并独立于普通颜色归并。</p>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">杂色清理</span>
+          <select v-model.number="cleanupMaxRegionSize" class="tool-select">
+            <option :value="0">关闭（保留所有细节）</option>
+            <option :value="1">清理单格杂色</option>
+            <option :value="2">清理单格和双格杂色</option>
+          </select>
+          <p class="control-hint">只合并空间上孤立的小色块，不会填充透明空格或改写固定轮廓。</p>
         </div>
 
         <!-- 品牌下拉 -->
         <div class="control-group">
           <span class="control-label">品牌色板</span>
           <select :value="mapping.selectedBrand.value" @change="onBrandChange" class="tool-select">
-            <option value="">-- 请选择品牌 --</option>
+            <option value="">不使用品牌色板</option>
             <option
               v-for="opt in brandOptions"
               :key="opt.value"
@@ -121,7 +171,7 @@
         <!-- 生成按钮 -->
         <button
           class="btn-generate"
-          :disabled="generating || !selectedFile || !algorithm"
+          :disabled="generating || !selectedFile"
           @click="doGenerate"
         >
           <span v-if="generating" class="btn-loading">
@@ -162,7 +212,7 @@
 
       <!-- 画布 -->
       <div v-else class="canvas-container">
-        <div class="canvas-wrapper" :style="{ aspectRatio: `${gridWidth} / ${gridHeight}`, transform: `scale(${zoom})` }">
+        <div class="canvas-wrapper" :style="canvasWrapperStyle">
           <div
             class="canvas-grid"
             :style="{
@@ -212,15 +262,10 @@
           上传图片并生成图纸后，<br />此处将显示拼豆用量统计。
         </div>
 
-        <!-- 已生成但未选品牌 -->
-        <div v-else-if="!hasBrandSelected" class="ws-tip">
-          请选择品牌以查看拼豆清单
-        </div>
-
-        <!-- 品牌色号列表 -->
+        <!-- 颜色列表 -->
         <template v-else>
           <div class="brand-indicator">
-            当前色板：<strong>{{ brandLabel }}</strong>
+            {{ hasBrandSelected ? '当前色板：' : '颜色清单：' }}<strong>{{ brandLabel }}</strong>
             <span class="brand-count">（{{ mapping.brandStats.value.length }} 种颜色）</span>
           </div>
 
@@ -241,7 +286,7 @@
           <div class="ws-footer">
             <div class="total-row">
               <span>总豆数：</span>
-              <span class="total-count">{{ gridBeads || mapping.totalBeads.value }} 颗</span>
+              <span class="total-count">{{ mapping.totalBeads.value }} 颗</span>
             </div>
           </div>
         </template>
@@ -282,24 +327,24 @@
             <div
               class="crop-box"
               :style="{
-                left: crop.x + '%',
-                top: crop.y + '%',
-                width: crop.w + '%',
-                height: crop.h + '%',
+                left: crop.left + '%',
+                top: crop.top + '%',
+                width: (crop.right - crop.left) + '%',
+                height: (crop.bottom - crop.top) + '%',
               }"
             ></div>
           </div>
           <div class="crop-controls">
-            <label>左侧 <input v-model.number="crop.x" type="range" min="0" :max="100 - crop.w" /></label>
-            <label>顶部 <input v-model.number="crop.y" type="range" min="0" :max="100 - crop.h" /></label>
-            <label>宽度 <input v-model.number="crop.w" type="range" min="20" :max="100 - crop.x" /></label>
-            <label>高度 <input v-model.number="crop.h" type="range" min="20" :max="100 - crop.y" /></label>
+            <label>左边界 <input v-model.number="crop.left" type="range" min="0" :max="crop.right - 20" /></label>
+            <label>右边界 <input v-model.number="crop.right" type="range" :min="crop.left + 20" max="100" /></label>
+            <label>上边界 <input v-model.number="crop.top" type="range" min="0" :max="crop.bottom - 20" /></label>
+            <label>下边界 <input v-model.number="crop.bottom" type="range" :min="crop.top + 20" max="100" /></label>
           </div>
           <div class="crop-actions">
             <button type="button" class="save-cancel" @click="resetCrop">重置</button>
             <button type="button" class="save-confirm" @click="applyCrop">使用裁剪区域</button>
           </div>
-          <p class="crop-note">透明 PNG 的透明区域会在图纸中保留为空格，不会计入豆数。</p>
+          <p class="crop-note">调节四个边界，把主体留在亮色区域内；透明区域会保留为空格，不计入豆数。</p>
         </div>
       </div>
     </Teleport>
@@ -307,8 +352,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { fetchPalette, generatePattern } from '@/api/generator'
+import type { GridColor } from '@/api/generator'
 import { saveMyPattern } from '@/api/patterns'
 import { useColorMapping } from '@/composables/useColorMapping'
 import { useAuthStore } from '@/stores/auth'
@@ -323,11 +369,14 @@ const thumbnailUrl = ref<string | null>(null)
 const slidingSize = ref(29)
 const gridWidth = ref(0)
 const gridHeight = ref(0)
-const gridBeads = ref(0)
-const slidingColors = ref(0)
-const algorithm = ref('')
+const slidingColors = ref(16)
 const generating = ref(false)
 const zoom = ref(1)
+const sourceGridData = ref<GridColor[][]>([])
+const backgroundMode = ref<'auto-light' | 'keep'>('auto-light')
+const outlineMode = ref<'black' | 'white' | 'clear' | 'none'>('black')
+const strictColorLimit = ref(true)
+const cleanupMaxRegionSize = ref(1)
 
 const mapping = useColorMapping()
 const auth = useAuthStore()
@@ -339,6 +388,13 @@ const brandOptions = [
   { value: 'artkal', label: 'Artkal (224色)', disabled: false, title: '' },
   { value: 'perler', label: 'Perler — 色号数据整理中', disabled: true, title: '色号数据整理中，敬请期待' },
   { value: 'hama', label: 'Hama — 色号数据整理中', disabled: true, title: '色号数据整理中，敬请期待' },
+]
+
+const colorPresetOptions = [
+  { value: 24, label: '细节' },
+  { value: 16, label: '均衡' },
+  { value: 12, label: '简化' },
+  { value: 8, label: '清爽' },
 ]
 
 const BEAD_SIZE_MM = 2.66
@@ -354,9 +410,23 @@ const hasGridData = computed(() => mapping.gridData.value.length > 0)
 const hasBrandSelected = computed(() => mapping.selectedBrand.value !== '')
 
 const brandLabel = computed(() => {
-  if (!mapping.selectedBrand.value) return ''
+  if (!mapping.selectedBrand.value) return '自定义颜色'
   const opt = brandOptions.find(o => o.value === mapping.selectedBrand.value)
   return opt ? opt.label.split(' —')[0].split(' (')[0] : mapping.selectedBrand.value
+})
+
+const effectiveColorLimit = computed(() =>
+  slidingColors.value > 0 ? slidingColors.value : 0
+)
+
+const normalizedColorCount = computed(() => {
+  if (slidingColors.value <= 0) return 16
+  return Math.min(64, Math.max(6, slidingColors.value))
+})
+
+const colorLimitLabel = computed(() => {
+  if (slidingColors.value <= 0) return hasBrandSelected.value ? '不限制色号' : '不限制颜色'
+  return hasBrandSelected.value ? `目标 ${slidingColors.value} 个色号` : `${slidingColors.value} 种颜色`
 })
 
 const flatCells = computed<MappedCell[]>(() => {
@@ -378,6 +448,117 @@ const cellFontSize = computed(() => {
   return 2
 })
 
+const canvasWrapperStyle = computed(() => {
+  const w = gridWidth.value || 1
+  const h = gridHeight.value || 1
+  const availableW = Math.max(180, viewportWidth.value <= 900 ? viewportWidth.value - 40 : viewportWidth.value - 760)
+  const availableH = Math.max(220, viewportHeight.value - 190)
+  const fitWidth = Math.min(550, availableW, availableH * (w / h))
+  return {
+    width: `${Math.max(160, fitWidth)}px`,
+    aspectRatio: `${w} / ${h}`,
+    transform: `scale(${zoom.value})`,
+  }
+})
+
+function updateViewport() {
+  viewportWidth.value = window.innerWidth
+  viewportHeight.value = window.innerHeight
+}
+
+function isLightNeutralBackground(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return Math.min(r, g, b) >= 235 && Math.max(r, g, b) - Math.min(r, g, b) <= 24
+}
+
+function clearConnectedLightBackground(grid: GridColor[][]): GridColor[][] {
+  if (grid.length === 0) return []
+  const height = grid.length
+  const width = grid[0]?.length || 0
+  const output = grid.map(row => [...row])
+  const visited = Array.from({ length: height }, () => Array(width).fill(false))
+  const queue: [number, number][] = []
+
+  function enqueue(x: number, y: number) {
+    if (x < 0 || x >= width || y < 0 || y >= height || visited[y][x]) return
+    const hex = grid[y][x]
+    if (!hex || !isLightNeutralBackground(hex)) return
+    visited[y][x] = true
+    queue.push([x, y])
+  }
+
+  for (let x = 0; x < width; x++) {
+    enqueue(x, 0)
+    enqueue(x, height - 1)
+  }
+  for (let y = 0; y < height; y++) {
+    enqueue(0, y)
+    enqueue(width - 1, y)
+  }
+
+  const neighbors = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const
+  for (let index = 0; index < queue.length; index++) {
+    const [x, y] = queue[index]
+    output[y][x] = null
+    for (const [dx, dy] of neighbors) enqueue(x + dx, y + dy)
+  }
+
+  return output
+}
+
+function applyFixedOutline(
+  grid: GridColor[][]
+): { grid: GridColor[][]; lockedColors: string[] } {
+  const output = grid.map(row => [...row])
+  if (outlineMode.value === 'none' || grid.length === 0) {
+    return { grid: output, lockedColors: [] }
+  }
+
+  const height = grid.length
+  const width = grid[0]?.length || 0
+  const hasEmptySpace = grid.some(row => row.some(cell => !cell))
+  if (!hasEmptySpace) return { grid: output, lockedColors: [] }
+
+  const outlineHex = outlineMode.value === 'black'
+    ? '#000000'
+    : outlineMode.value === 'white'
+      ? '#FFFFFF'
+      : null
+  const neighbors = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!grid[y][x]) continue
+      const isBoundary = neighbors.some(([dx, dy]) => {
+        const nx = x + dx
+        const ny = y + dy
+        return nx < 0 || nx >= width || ny < 0 || ny >= height || !grid[ny][nx]
+      })
+      if (isBoundary) output[y][x] = outlineHex
+    }
+  }
+
+  return {
+    grid: output,
+    lockedColors: outlineHex ? [outlineHex] : [],
+  }
+}
+
+function refreshPatternProcessing() {
+  const backgroundGrid = backgroundMode.value === 'auto-light'
+    ? clearConnectedLightBackground(sourceGridData.value)
+    : sourceGridData.value.map(row => [...row])
+  const outlined = applyFixedOutline(backgroundGrid)
+  mapping.setProcessing(outlined.grid, {
+    targetColorCount: effectiveColorLimit.value,
+    strictColorLimit: strictColorLimit.value,
+    cleanupMaxRegionSize: cleanupMaxRegionSize.value,
+    lockedColors: outlined.lockedColors,
+  })
+}
+
 const showSaveForm = ref(false)
 const saveTitle = ref('')
 const saveCategory = ref('其他')
@@ -388,12 +569,16 @@ const leftPanelOpen = ref(false)
 const rightPanelOpen = ref(false)
 const cropEditorOpen = ref(false)
 const cropImageUrl = ref<string | null>(null)
-const crop = ref({ x: 0, y: 0, w: 100, h: 100 })
+const crop = ref({ left: 0, top: 0, right: 100, bottom: 100 })
 const cropApplied = ref(false)
+const viewportWidth = ref(window.innerWidth)
+const viewportHeight = ref(window.innerHeight)
 
 // ========== 初始化 ==========
 
 onMounted(async () => {
+  updateViewport()
+  window.addEventListener('resize', updateViewport)
   try {
     const data = await fetchPalette()
     mapping.setPalette(data)
@@ -412,6 +597,44 @@ watch(slidingSize, (val) => {
   } else if (val > 200) {
     slidingSize.value = 200
   }
+})
+
+watch(slidingColors, (val) => {
+  if (!Number.isFinite(val)) {
+    slidingColors.value = 16
+  } else if (val < 0) {
+    slidingColors.value = 0
+  } else if (val > 64) {
+    slidingColors.value = 64
+  } else {
+    slidingColors.value = Math.floor(val)
+  }
+})
+
+watch(
+  [effectiveColorLimit, strictColorLimit, cleanupMaxRegionSize, outlineMode, backgroundMode],
+  () => refreshPatternProcessing(),
+  { immediate: true }
+)
+
+watch(
+  [() => mapping.mappedGrid.value, () => mapping.brandStats.value, () => mapping.totalBeads.value, brandLabel],
+  () => {
+    if (!hasGridData.value) return
+    updateExportData({
+      gridData: mapping.processedGrid.value,
+      mappedGrid: mapping.mappedGrid.value,
+      brandStats: mapping.brandStats.value,
+      totalBeads: mapping.totalBeads.value,
+      brandLabel: brandLabel.value,
+      gridWidth: gridWidth.value,
+      gridHeight: gridHeight.value,
+    })
+  }
+)
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateViewport)
 })
 
 function triggerUpload() {
@@ -434,6 +657,10 @@ function onFileChange(e: Event) {
   originalImageUrl.value = URL.createObjectURL(file)
   thumbnailUrl.value = originalImageUrl.value
   cropImageUrl.value = originalImageUrl.value
+  sourceGridData.value = []
+  gridWidth.value = 0
+  gridHeight.value = 0
+  refreshPatternProcessing()
   resetCrop()
   cropApplied.value = false
   cropEditorOpen.value = true
@@ -446,7 +673,7 @@ function openCropEditor() {
 }
 
 function resetCrop() {
-  crop.value = { x: 0, y: 0, w: 100, h: 100 }
+  crop.value = { left: 0, top: 0, right: 100, bottom: 100 }
 }
 
 async function applyCrop() {
@@ -477,7 +704,7 @@ async function applyCrop() {
 }
 
 function isFullCrop() {
-  return crop.value.x === 0 && crop.value.y === 0 && crop.value.w === 100 && crop.value.h === 100
+  return crop.value.left === 0 && crop.value.top === 0 && crop.value.right === 100 && crop.value.bottom === 100
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -495,10 +722,15 @@ async function renderCropBlob(): Promise<Blob | null> {
   }
 
   const img = await loadImage(originalImageUrl.value)
-  const sx = Math.round((crop.value.x / 100) * img.naturalWidth)
-  const sy = Math.round((crop.value.y / 100) * img.naturalHeight)
-  const sw = Math.max(1, Math.round((crop.value.w / 100) * img.naturalWidth))
-  const sh = Math.max(1, Math.round((crop.value.h / 100) * img.naturalHeight))
+  const padRatio = 0.015
+  const left = Math.max(0, crop.value.left - padRatio * 100)
+  const top = Math.max(0, crop.value.top - padRatio * 100)
+  const right = Math.min(100, crop.value.right + padRatio * 100)
+  const bottom = Math.min(100, crop.value.bottom + padRatio * 100)
+  const sx = Math.round((left / 100) * img.naturalWidth)
+  const sy = Math.round((top / 100) * img.naturalHeight)
+  const sw = Math.max(1, Math.round(((right - left) / 100) * img.naturalWidth))
+  const sh = Math.max(1, Math.round(((bottom - top) / 100) * img.naturalHeight))
   const canvas = document.createElement('canvas')
   canvas.width = sw
   canvas.height = sh
@@ -521,6 +753,10 @@ async function createUploadFile(): Promise<File> {
   return new File([blob], name, { type: 'image/png' })
 }
 
+function onColorSliderInput(e: Event) {
+  slidingColors.value = Number((e.target as HTMLInputElement).value)
+}
+
 async function doGenerate() {
   if (!selectedFile.value) return
   generating.value = true
@@ -531,22 +767,13 @@ async function doGenerate() {
     const res = await generatePattern({
       file: uploadFile,
       grid_size: slidingSize.value,
-      color_count: slidingColors.value,
-      algorithm: algorithm.value,
+      color_count: 0,
+      algorithm: 'kmeans',
     })
-    mapping.setGridData(res.grid_data)
+    sourceGridData.value = res.grid_data
     gridWidth.value = res.width
     gridHeight.value = res.height
-    gridBeads.value = res.beads_count
-    updateExportData({
-      gridData: mapping.gridData.value,
-      mappedGrid: mapping.mappedGrid.value,
-      brandStats: mapping.brandStats.value,
-      totalBeads: res.beads_count,
-      brandLabel: brandLabel.value,
-      gridWidth: res.width,
-      gridHeight: res.height,
-    })
+    refreshPatternProcessing()
   } catch (e: any) {
     alert(e?.response?.data?.detail || e?.message || '生成失败，请重试')
   } finally {
@@ -584,10 +811,10 @@ async function doSave() {
       title: saveTitle.value.trim(),
       category: saveCategory.value,
       colors,
-      grid_data: mapping.gridData.value,
+      grid_data: mapping.processedGrid.value,
       width: gridWidth.value,
       height: gridHeight.value,
-      beads_count: gridBeads.value || mapping.totalBeads.value,
+      beads_count: mapping.totalBeads.value,
     })
     saveOk.value = true
     saveMsg.value = '已保存到我的作品！'
@@ -735,6 +962,27 @@ function onBrandChange(e: Event) {
   font-weight: bold;
   color: var(--text-light);
 }
+.control-hint {
+  margin: 6px 0 0;
+  color: var(--text-light);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.option-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.option-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
 .bead-type-badge {
   font-size: 11px;
   font-weight: 700;
@@ -797,6 +1045,46 @@ function onBrandChange(e: Event) {
   color: #c0c0c0;
 }
 
+.text-mini-button {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.control-label + .tool-select {
+  margin-top: 8px;
+}
+.text-mini-button:hover {
+  border-color: var(--primary);
+  color: var(--text-main);
+}
+
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.preset-button {
+  min-width: 0;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.preset-button.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
 .range-slider {
   width: 100%;
   -webkit-appearance: none;
@@ -815,6 +1103,9 @@ function onBrandChange(e: Event) {
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+.range-slider:disabled {
+  opacity: 0.45;
 }
 
 .size-val {
@@ -967,11 +1258,9 @@ function onBrandChange(e: Event) {
 }
 .crop-stage {
   position: relative;
-  width: 100%;
-  max-height: 52vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   overflow: hidden;
   border-radius: 10px;
   background:
@@ -983,9 +1272,10 @@ function onBrandChange(e: Event) {
   background-position: 0 0, 0 9px, 9px -9px, -9px 0;
 }
 .crop-image {
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  height: auto;
   max-height: 52vh;
-  object-fit: contain;
   display: block;
 }
 .crop-box {

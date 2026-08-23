@@ -29,7 +29,7 @@
 
               <div class="ex-summary">
                 总豆数：<strong>{{ totalBeads }} 颗</strong>
-                <span class="ex-summary-detail">（{{ stats.length }} 种颜色,包含背景）</span>
+                <span class="ex-summary-detail">（{{ stats.length }} 种颜色，不含透明空格）</span>
               </div>
 
               <button class="ex-action-btn ex-copy-btn" @click="onCopy">复制清单</button>
